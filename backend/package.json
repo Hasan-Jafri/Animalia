@@ -1,0 +1,36 @@
+{
+  "name": "animalia",
+  "version": "1.0.0",
+  "description": "Backend designed to get the data of the provided animal via an image, consisting of details such as its name, habitat, location etc.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "animal-identification",
+    "flutter",
+    "nodejs",
+    "mongodb",
+    "express",
+    "gemini-api",
+    "project-animalia",
+    "habitat",
+    "diet",
+    "backend",
+    "mobile-app"
+  ],
+  "author": "Hasan Jafry",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@google/generative-ai": "^0.19.0",
+    "axios": "^1.7.7",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.9.0",
+    "mongoose": "^8.6.2",
+    "mongose": "^0.0.2-security"
+  }
+}
