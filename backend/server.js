@@ -5,6 +5,7 @@ const animalRoutes = require('./routes/animal_routes')
 const cors = require("cors")
 dotenv.config();
 require("./database/connection")
+const path = require('path');
 
 // Initializing env variables
 
@@ -17,6 +18,7 @@ const PORT = process.env.PORT || 5000;
 // Middle ware
 app.use(cors());
 app.use(express.json()); // For parsing application/json
+app.use('/uploads', express.static(path.join(__dirname,'routes', 'uploads')));
 
 // Basic route
 app.get('/',(req,res)=>{

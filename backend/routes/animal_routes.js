@@ -6,10 +6,16 @@ const authenticate = require('../middleware/auth_middleware')
 const axios = require('axios'); // For API requests
 const User = require('../models/user');
 const dotenv = require('dotenv')
+const multer = require('multer');
+const sharp = require('sharp');
+const path = require('path');
 dotenv.config();
-
+const PORT = process.env.PORT || 5000;
 const GEMINI_API_KEY = process.env.GEMINI_KEY;
 const googleAI = new GoogleGenerativeAI.GoogleGenerativeAI(GEMINI_API_KEY);
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 const geminiconfig = {
         temperature: 1,
         topP: 0.95,
@@ -42,51 +48,60 @@ const generate = async () => {
       console.log("response error", error);
     }
   };
-router.post('/identify', authenticate, async(req,res)=>{
-    generate();
-    // const GEMINI_KEY = process.env.GEMINI_KEY;
-    // const googleAI = GoogleGenerativeAI(GEMINI_KEY);
-    // const geminiconfig = {
-    //     temperature: 1,
-    //     topP: 0.95,
-    //     topK: 64,
-    //     maxOutputTokens: 4096,
-    //     response_mime_type: "application/json",
-    // }
-    // const geminiModel = googleAI.getGenerativeModel({
-    //     model:"gemini-1.5-flash",
-    //     geminiconfig
-    // })
+router.post('/identify', authenticate,upload.single('image'), async(req,res)=>{
+    try{
+        const {buffer} = req.file;
 
+        processedImage = await sharp(buffer).toFormat('png').toBuffer();  
+        const imageName = `${Date.now()}-animal.png`;
+        const imagePath = path.join(__dirname,'uploads',imageName);
+        require('fs').writeFileSync(imagePath,processedImage);
 
-    // try{
+        const base64Image = processedImage.toString('base64');
+        const promptConfig = [
+            { text: "Analyze this image and provide the following details about the animal: name, habitat, Where it's commonly found as 'found', and diet.I need you to answer me as only 'name,habitat,found,diet' so that it easy to crack" },
+            {
+                inlineData: {
+                    mimeType: "image/png", // Update if using a different image format
+                    data: base64Image,
+                },
+            },
+        ];
 
-    //     // const prompt = "Tell me about yourself.";
-    //     // const result = await geminiModel.generateContent(prompt);
-    //     // const response = result.response;
-    //     // console.log(response.text());
-    //     // const {imageUrl} = req.body; // Picture by the user.
-
-    //     // // Gemini API connection for information.
-    //     // const geminiResponse = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`,body= {prompt:"FOR ALL THE IMAGES I PROVIDEI WANT YOU TO IDENTIFY WHAT ANIMAL IS THIS AND GIVE YOUR RESPONSE IN A FORMAT name: xxxx, habitat: xxx, found: xxxx, diet:xxx"},{timeout: 60000});
-    //     // const geminiResponse2 = await axios.post(body = {imageUrl: imageUrl},{timeout: 60000});
-    //     // console.log(geminiResponse)
-    //     // console.log(geminiResponse2)
-    //     // const {name, habitat, found, diet} = geminiResponse.data;
+        const result = await geminiModel.generateContent({
+            contents: [{ role: "User", parts: promptConfig }],
+        });
+        console.log("RESPONSE====>",result.response.text());
         
-    //     // // Animal Object creation
-    //     // const animal = new Animal({name,habitat,found,diet,imageUrl});
-    //     // await animal.save();
+            // Call the `text()` function to extract the text content
+    const responseText = await result.response.text();
 
-    //     // const user = await User.findById(req.user.id);
-    //     // user.history.push(animal._id);
-    //     // await user.save();
+    // Parse the responseText if it’s in JSON format
+    const match = responseText.replace(/\\n|\\t|\\r/g, '').trim().split(',')
+    // const responseData = JSON.parse(jsonMatch);
+        
 
-    //     // res.status(201).json({message: "Animal Identiied and saved to history", animal});
+    // const { name, habitat, found, diet } = responseData;
+    const animalData = {
+        name:match[0],
+        habitat:match[1],
+        found:match[2],
+        diet:match[3],
+        imageUrl: `http://localhost:${PORT}/routes/uploads/${imageName}`,
+    };
 
-    // }catch(error){
-    //     res.status(400).json({message: "Error identifying animal", error});
-    // }
+        const animal = new Animal(animalData);
+        await animal.save();
+
+        res.status(200).json(animal);
+
+
+
+    }catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Failed to process the image' });
+    }
+    
 });
 
 router.get('/history', authenticate,async (req,res)=>{
